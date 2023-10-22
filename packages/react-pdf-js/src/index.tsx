@@ -11,7 +11,7 @@ type PDFRenderTask = ReturnType<PDFPageProxy['render']>;
 
 type HookProps = {
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  file: string;
+  file: string | ArrayBuffer;
   onDocumentLoadSuccess?: (document: PDFDocumentProxy) => void;
   onDocumentLoadFail?: () => void;
   onPageLoadSuccess?: (page: PDFPageProxy) => void;
@@ -89,7 +89,14 @@ export const usePdf = ({
   }, [workerSrc]);
 
   useEffect(() => {
-    const config: DocumentInitParameters = { url: file, withCredentials };
+    let config: DocumentInitParameters;
+
+    if (typeof file === 'string') {
+      config = { url: file, withCredentials };
+    } else {
+      config = { data: file };
+    }
+
     if (cMapUrl) {
       config.cMapUrl = cMapUrl;
       config.cMapPacked = cMapPacked;
@@ -114,8 +121,6 @@ export const usePdf = ({
   useEffect(() => {
     // draw a page of the pdf
     const drawPDF = (page: PDFPageProxy) => {
-      // Because this page's rotation option overwrites pdf default rotation value,
-      // calculating page rotation option value from pdf default and this component prop rotate.
       const rotation = rotate === 0 ? page.rotate : page.rotate + rotate;
       const dpRatio = window.devicePixelRatio;
       const adjustedScale = scale * dpRatio;
@@ -135,7 +140,6 @@ export const usePdf = ({
       canvasEl.height = viewport.height;
       canvasEl.width = viewport.width;
 
-      // if previous render isn't done yet, we cancel it
       if (renderTask.current) {
         renderTask.current.cancel();
         return;
